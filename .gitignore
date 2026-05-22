@@ -1,0 +1,6 @@
+/.idea
+/data/model_output
+/.DS_Store
+jobs_in_data.csv
+jobs_in_data_2024.csv
+postings.csv

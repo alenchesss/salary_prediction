@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IT Job Salary Predictor</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #060b18;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 20% 20%, rgba(59,130,246,0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(99,102,241,0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(14,165,233,0.05) 0%, transparent 70%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 24px 40px;
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+  }
+
+  header p {
+    font-size: 13px;
+    color: rgba(148,163,184,0.8);
+    margin-top: 5px;
+    font-weight: 300;
+  }
+
+  #map {
+    width: 100%;
+    height: 380px;
+    z-index: 1;
+    position: relative;
+  }
+
+  .main {
+    position: relative;
+    z-index: 10;
+    padding: 28px 40px;
+  }
+
+  /* Glass panel */
+  .glass-panel {
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .panel-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(96,165,250,0.7);
+    margin-bottom: 18px;
+  }
+
+  .controls-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .controls-grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+
+  .ctrl {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ctrl label {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(148,163,184,0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .step-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(96,165,250,0.9);
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+
+  .step-badge span {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(96,165,250,0.15);
+    border: 1px solid rgba(96,165,250,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #60a5fa;
+  }
+
+  .ctrl select {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.06);
+    color: #e2e8f0;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+
+  .ctrl select:hover {
+    border-color: rgba(96,165,250,0.4);
+    background-color: rgba(255,255,255,0.08);
+  }
+
+  .ctrl select:focus {
+    outline: none;
+    border-color: rgba(96,165,250,0.6);
+    box-shadow: 0 0 0 3px rgba(96,165,250,0.1);
+  }
+
+  .ctrl select:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .ctrl select option {
+    background: #1e293b;
+    color: #e2e8f0;
+  }
+
+  .predict-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+    box-shadow: 0 4px 24px rgba(59,130,246,0.3);
+  }
+
+  .predict-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 32px rgba(59,130,246,0.4);
+  }
+
+  .predict-btn:active {
+    transform: translateY(0);
+  }
+
+  /* Result panel */
+  .result-panel {
+    display: none;
+    background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(99,102,241,0.08));
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(96,165,250,0.2);
+    border-radius: 20px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+  }
+
+  .result-panel.show { display: block; }
+
+  .salary-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(96,165,250,0.7);
+    margin-bottom: 10px;
+  }
+
+  .salary-amount {
+    font-size: 56px;
+    font-weight: 700;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+
+  .salary-sub {
+    font-size: 13px;
+    color: rgba(148,163,184,0.6);
+    margin-top: 8px;
+    font-weight: 300;
+  }
+
+  .chips {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    font-size: 12px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.06);
+    color: rgba(148,163,184,0.9);
+    border: 1px solid rgba(255,255,255,0.1);
+    font-weight: 400;
+  }
+
+  /* Chart panel */
+  .chart-panel {
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 20px;
+    padding: 24px;
+  }
+
+  .chart-panel h3 {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(148,163,184,0.7);
+    margin-bottom: 16px;
+    letter-spacing: 0.3px;
+  }
+
+  .divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 20px 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>IT Job Market & Salary Predictor</h1>
+  <p>Explore global IT job salaries select a role, country and forecast period to predict your salary</p>
+</header>
+
+<div id="map"></div>
+
+<div class="main">
+
+  <!-- Controls Panel -->
+  <div class="glass-panel">
+    <div class="panel-title">Configure Your Prediction</div>
+
+    <div class="controls-grid" style="margin-bottom:16px">
+      <div class="ctrl">
+        <div class="step-badge"><span>1</span> Category</div>
+        <label>Job Category</label>
+        <select id="sel-category" onchange="onCategoryChange()">
+          <option value="">-- Select Category --</option>
+        </select>
+      </div>
+      <div class="ctrl">
+        <div class="step-badge"><span>2</span> Role</div>
+        <label>Job Title</label>
+        <select id="sel-job" disabled>
+          <option value="">Select category first</option>
+        </select>
+      </div>
+      <div class="ctrl">
+        <div class="step-badge"><span>3</span> Location</div>
+        <label>Country</label>
+        <select id="sel-country"></select>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="controls-grid2">
+      <div class="ctrl">
+        <div class="step-badge"><span>4</span> Experience</div>
+        <label>Experience Level</label>
+        <select id="sel-exp"></select>
+      </div>
+      <div class="ctrl">
+        <div class="step-badge"><span>5</span> Forecast</div>
+        <label>Forecast Period</label>
+        <select id="sel-forecast">
+          <option value="0">Current (2024)</option>
+          <option value="0.083">Next Month</option>
+          <option value="0.5">6 Months</option>
+          <option value="1">Next Year (2025)</option>
+          <option value="2">2 Years (2026)</option>
+          <option value="3">3 Years (2027)</option>
+          <option value="5">5 Years (2029)</option>
+        </select>
+      </div>
+      <div class="ctrl" style="justify-content:flex-end">
+        <div class="step-badge"><span>6</span> Go</div>
+        <button class="predict-btn" onclick="predict()">Predict Salary →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Result Panel -->
+  <div class="result-panel" id="result-panel">
+    <div class="salary-label">Predicted Annual Salary</div>
+    <div class="salary-amount" id="res-salary">—</div>
+    <div class="salary-sub" id="res-sub">USD per year</div>
+    <div class="chips" id="res-chips"></div>
+  </div>
+
+  <!-- Chart Panel -->
+  <div class="chart-panel">
+    <h3 id="chart-title">Salary forecast will appear here after your first prediction</h3>
+    <canvas id="trendChart" height="90"></canvas>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://127.0.0.1:5001';
+let trendChart = null;
+let categoryJobs = {};
+
+const COUNTRY_COORDS = {
+  'United States':[37,-95],'United Kingdom':[55,-3],'Germany':[51,10],
+  'Canada':[56,-106],'Australia':[-25,133],'India':[21,78],
+  'France':[46,2],'Japan':[36,138],'China':[35,104],
+  'Spain':[40,-4],'Netherlands':[52,5],'Sweden':[60,18],
+  'Singapore':[1,103],'Brazil':[-15,-47],'Mexico':[23,-102],
+  'South Korea':[37,127],'Italy':[42,12],'Russia':[61,105],
+  'Poland':[52,20],'Portugal':[39,-8]
+};
+
+async function loadOptions() {
+  try {
+    const res = await fetch(`${API}/options`);
+    const data = await res.json();
+    categoryJobs = data.category_jobs;
+
+    const catSel = document.getElementById('sel-category');
+    catSel.innerHTML = '<option value="">-- Select Category --</option>' +
+      data.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    fillSelect('sel-country', data.countries);
+    fillSelect('sel-exp', data.experience_levels);
+  } catch(e) {
+    console.error('Could not load options:', e);
+  }
+}
+
+function fillSelect(id, items) {
+  document.getElementById(id).innerHTML =
+    items.map(i => `<option value="${i}">${i}</option>`).join('');
+}
+
+function onCategoryChange() {
+  const category = document.getElementById('sel-category').value;
+  const jobSel = document.getElementById('sel-job');
+  if (!category) {
+    jobSel.innerHTML = '<option value="">Select category first</option>';
+    jobSel.disabled = true;
+    return;
+  }
+  const jobs = categoryJobs[category] || [];
+  jobSel.innerHTML = jobs.map(j => `<option value="${j}">${j}</option>`).join('');
+  jobSel.disabled = false;
+}
+
+async function predict() {
+  const category = document.getElementById('sel-category').value;
+  const job_title = document.getElementById('sel-job').value;
+  const country = document.getElementById('sel-country').value;
+  const experience_level = document.getElementById('sel-exp').value;
+  const forecast_years = document.getElementById('sel-forecast').value;
+  const forecastText = document.getElementById('sel-forecast').selectedOptions[0].text;
+
+  if (!category || !job_title || !country) {
+    alert('Please complete steps 1, 2 and 3 first!');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API}/predict`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({job_title, country, experience_level, category, forecast_years})
+    });
+    const data = await res.json();
+    if (data.error) { alert('Error: ' + data.error); return; }
+
+    document.getElementById('result-panel').classList.add('show');
+    document.getElementById('res-salary').textContent = '$' + Math.round(data.salary).toLocaleString();
+    document.getElementById('res-sub').textContent = 'USD per year  ·  ' + forecastText;
+    document.getElementById('res-chips').innerHTML =
+      ['category','job_title','country','experience_level']
+      .map((k,i) => `<span class="chip">${[category,job_title,country,experience_level][i]}</span>`)
+      .join('');
+
+    updateChart(job_title, country, data.salary, parseFloat(forecast_years));
+    if (COUNTRY_COORDS[country]) map.flyTo(COUNTRY_COORDS[country], 4, {duration:1.5});
+  } catch(e) {
+    alert('Cannot connect to server. Make sure Flask is running on port 5001!');
+  }
+}
+
+function updateChart(job, country, currentSalary, forecastYears) {
+  const labels = ['2024','2025','2026','2027','2028','2029'];
+  const base = currentSalary / Math.pow(1.03, forecastYears);
+  const values = labels.map((_,i) => Math.round(base * Math.pow(1.03, i)));
+
+  document.getElementById('chart-title').textContent = `Salary forecast — ${job} · ${country}`;
+
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Predicted Salary (USD)',
+        data: values,
+        borderColor: '#60a5fa',
+        backgroundColor: 'rgba(96,165,250,0.07)',
+        tension: 0.4,
+        pointRadius: 5,
+        pointBackgroundColor: '#60a5fa',
+        pointBorderColor: 'rgba(96,165,250,0.3)',
+        pointBorderWidth: 4,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: 'rgba(148,163,184,0.7)', font: { family: 'Inter', size: 12 } } },
+        tooltip: {
+          backgroundColor: 'rgba(15,23,42,0.9)',
+          borderColor: 'rgba(96,165,250,0.2)',
+          borderWidth: 1,
+          callbacks: { label: ctx => '  $' + ctx.parsed.y.toLocaleString() }
+        }
+      },
+      scales: {
+        y: {
+          ticks: { color: 'rgba(148,163,184,0.5)', callback: v => '$'+(v/1000).toFixed(0)+'k', font:{family:'Inter',size:11} },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          border: { color: 'transparent' }
+        },
+        x: {
+          ticks: { color: 'rgba(148,163,184,0.5)', font:{family:'Inter',size:11} },
+          grid: { display: false },
+          border: { color: 'transparent' }
+        }
+      }
+    }
+  });
+}
+
+const map = L.map('map', {zoomControl:true, attributionControl:false}).setView([25,15], 2);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {maxZoom:10}).addTo(map);
+
+function salaryColor(avg) {
+  if (avg >= 150000) return '#22c55e';
+  if (avg >= 120000) return '#3b82f6';
+  if (avg >= 90000)  return '#a78bfa';
+  if (avg >= 60000)  return '#f59e0b';
+  return '#ef4444';
+}
+
+function salaryRadius(avg) {
+  if (avg >= 150000) return 14;
+  if (avg >= 120000) return 11;
+  if (avg >= 90000)  return 9;
+  return 7;
+}
+
+async function initMap() {
+  let countrySalaries = {};
+  try {
+    const res = await fetch(`${API}/country_salaries`);
+    countrySalaries = await res.json();
+  } catch(e) {
+    console.error('Could not load country salaries');
+  }
+
+  Object.entries(COUNTRY_COORDS).forEach(([country, coords]) => {
+    const avg = countrySalaries[country] || null;
+    const color = avg ? salaryColor(avg) : '#64748b';
+    const radius = avg ? salaryRadius(avg) : 7;
+    const salaryText = avg ? '$' + Math.round(avg).toLocaleString() + ' avg/yr' : 'No data';
+
+    const circle = L.circleMarker(coords, {
+      radius: radius,
+      fillColor: color,
+      color: 'rgba(255,255,255,0.3)',
+      weight: 5,
+      fillOpacity: 0.9
+    }).addTo(map);
+
+    circle.bindTooltip(`
+      <div style="font-family:Inter,sans-serif;padding:4px 2px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:3px">${country}</div>
+        <div style="font-size:12px;color:#22c55e;font-weight:600">${salaryText}</div>
+      </div>
+    `, {direction:'top', opacity:0.95});
+
+    circle.on('click', () => {
+      const sel = document.getElementById('sel-country');
+      const opt = Array.from(sel.options).find(o => o.value === country);
+      if (opt) sel.value = country;
+    });
+  });
+
+  const legend = L.control({position: 'bottomleft'});
+  legend.onAdd = () => {
+    const div = L.DomUtil.create('div');
+    div.innerHTML = `
+      <div style="background:rgba(10,15,44,0.9);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 14px;font-family:Inter,sans-serif;font-size:11px;color:#e2e8f0">
+        <div style="font-weight:600;margin-bottom:6px;color:#94a3b8;letter-spacing:0.5px">AVG SALARY / YEAR</div>
+        ${[['#22c55e','$150k+'],['#3b82f6','$120k–150k'],['#a78bfa','$90k–120k'],['#f59e0b','$60k–90k'],['#ef4444','Below $60k']]
+          .map(([c,l]) => `<div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
+            <div style="width:11px;height:11px;border-radius:50%;background:${c}"></div>
+            <span>${l}</span></div>`).join('')}
+      </div>`;
+    return div;
+  };
+  legend.addTo(map);
+}
+
+initMap();
+loadOptions();
+</script>
+</body>
+</html>
